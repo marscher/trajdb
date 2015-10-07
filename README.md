@@ -20,8 +20,8 @@ It also contains a backreference to the refering collection (Collection context)
 
 ## Database scheme (tables)
 
-collections(id, name, pdb(+topology), temperature, ...)
-trajectories(id, name, file\_URI, meta data..., coll\_id, parent\_traj\_id) 
-users(id, name, mail, ...)
-collection ownership([collid, userid])
+* collections(id, name, pdb(+topology), temperature, ...)
+* trajectories(id, name, file\_URI, meta data..., coll\_id, parent\_traj\_id) 
+* users(id, name, mail, ...)
+* collection ownership([collid, userid])
 
