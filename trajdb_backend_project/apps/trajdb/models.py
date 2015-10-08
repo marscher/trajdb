@@ -10,6 +10,54 @@
 from __future__ import unicode_literals
 
 from django.db import models
+from django.conf import settings
+from django.utils.translation import ugettext_lazy as _
+
+from . import managers
+
+class Profile(models.Model):
+    # Relations
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        related_name="profile",
+        verbose_name=_("user")
+        )
+    # Attributes - Mandatory
+    interaction = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("interaction")
+        )
+    # Attributes - Optional
+    # Object Manager
+    objects = managers.ProfileManager()
+ 
+    # Custom Properties
+    @property
+    def username(self):
+        return self.user.username
+ 
+    # Methods
+ 
+    # Meta and String
+    class Meta:
+        verbose_name = _("Profile")
+        verbose_name_plural = _("Profiles")
+        ordering = ("user",)
+ 
+    def __str__(self):
+        return self.user.username 
+
+class Setup(models.Model):
+    id = models.IntegerField(primary_key=True)
+    description = models.CharField(max_length=1000)
+    pdb = models.CharField(max_length=4)
+    program = models.CharField(max_length=20)
+    program_version = models.CharField(max_length=10)
+    topology = models.BinaryField()
+    topology_type = models.CharField(max_length=4) # TODO: replace with choices?
+    forcefield_name = models.CharField(max_length=20)
+    forcefield_parameters = models.BinaryField()
+    forcefield_parameters_type = models.CharField(max_length=4)
 
 
 class Collection(models.Model):
@@ -18,42 +66,13 @@ class Collection(models.Model):
     description = models.CharField(max_length=255)
     length = models.IntegerField()
     n_atoms = models.IntegerField()
-    setup_id = models.IntegerField()
-
-    class Meta:
-        managed = False
-        db_table = 'Collection'
-
+    setup = models.ForeignKey(Setup)
+    owner = models.ForeignKey(Profile)
 
 class Collectionownership(models.Model):
-    collection_id = models.IntegerField()
-    user_id = models.IntegerField()
-
-    class Meta:
-        managed = False
-        db_table = 'CollectionOwnership'
-        unique_together = (('collection_id', 'user_id'),)
-
-
-class Groupmembership(models.Model):
-    group_id = models.IntegerField()
-    user_id = models.IntegerField()
-
-    class Meta:
-        managed = False
-        db_table = 'GroupMembership'
-        unique_together = (('group_id', 'user_id'),)
-
-
-class Groups(models.Model):
     id = models.IntegerField(primary_key=True)
-    name = models.CharField(max_length=1)
-    organisation = models.CharField(max_length=255)
-
-    class Meta:
-        managed = False
-        db_table = 'Groups'
-
+    collection_id = models.ForeignKey(Collection)
+    profile_id = models.ForeignKey(Profile)
 
 class Trajectory(models.Model):
     id = models.IntegerField(primary_key=True)
@@ -62,17 +81,4 @@ class Trajectory(models.Model):
     collection = models.ForeignKey(Collection)
     uri = models.CharField(max_length=1000)
 
-    class Meta:
-        managed = False
-        db_table = 'Trajectory'
 
-# TODO: check if it is valid to re-use the django internal user management here.
-class User(models.Model):
-    id = models.IntegerField(primary_key=True)
-    name = models.CharField(max_length=1)
-    mail = models.CharField(max_length=1)
-    password = models.CharField(max_length=1)
-
-    class Meta:
-        managed = False
-        db_table = 'User'
