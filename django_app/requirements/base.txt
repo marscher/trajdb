@@ -1,0 +1,5 @@
+--allow-external mysql-connector-python
+mysql-connector-python==2.0.3
+Django==1.8.4
+selenium==2.48.0
+wheel==0.24.0
