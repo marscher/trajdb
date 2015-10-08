@@ -66,7 +66,7 @@ class Trajectory(models.Model):
         managed = False
         db_table = 'Trajectory'
 
-
+# TODO: check if it is valid to re-use the django internal user management here.
 class User(models.Model):
     id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=1)
