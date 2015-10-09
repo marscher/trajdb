@@ -1,11 +1,24 @@
 ## Description of services
 
+### Storage
 The backend service is a Django application, containing the database backend and
 a restful http API to communicate with the service (create new collections, users,
 permissions, download data etc.)
 
 Permissions to collections/trajectories will be made via access tokens (grant per
 user or group with a certain time limit - will probably be another django app).
+
+If a traj is uploaded, it is being stored systematically (eg. collection/ folder)  in a central pool.
+
+If a traj already is on the same filesystem we should avoid a copy, and do a move instead.
+This can be achieved via associated URI analysis.
+
+### Download service
+Since files are being stored in a central repo associated to the backend instance,
+it is possible to download all files from there.
+
+The protocol should support resuming downloads (HTTP is capable of doing so - impl in client app).
+
 
 ## Why Django?
 Django is a powerful framework to create full featured web services with support
