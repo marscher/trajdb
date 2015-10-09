@@ -60,7 +60,7 @@ class Setup(models.Model):
     """ Setup contains the simulation setup like used topology and forcefield
     parameters.
     """
-    id = models.IntegerField(primary_key=True)
+    #id = models.IntegerField(primary_key=True)
     description = models.CharField(max_length=1000)
     pdb = models.CharField(max_length=4)
     program = models.CharField(max_length=20)
@@ -76,7 +76,7 @@ class Setup(models.Model):
 class Collection(models.Model):
     """ A collection is associated to one setup and owner.
     """
-    id = models.IntegerField(primary_key=True)
+    #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     n_atoms = models.IntegerField(help_text='Number of atoms/particles in the simulation.')
@@ -90,13 +90,13 @@ class Trajectory(models.Model):
     Has a unique hash (sha512).
     Might refer to a parent trajectory from which the actual has been forked from.
     """
-    id = models.IntegerField(primary_key=True)
+    #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=255)
     length = models.PositiveIntegerField()
     parent_traj = models.ForeignKey('self', blank=True, null=True)
     collection = models.ForeignKey(Collection)
     uri = models.CharField(max_length=1000)
-    hash_sha512 = models.CharField(max_length=128, unique=True)
+    hash_sha512 = models.CharField(max_length=128, unique=True, blank=False)
 
 
 @receiver(post_save, sender=Trajectory)
@@ -105,3 +105,4 @@ def update_cumulative_simulation_len(sender, created, instance, **kw):
         assert isinstance(instance, Trajectory)
         instance.collection.cumulative_length += instance.length
         instance.collection.save()
+        print "len:", instance.collection.cumulative_length
