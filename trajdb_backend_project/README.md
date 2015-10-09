@@ -1,9 +1,16 @@
+## Description of services
+
 The backend service is a Django application, containing the database backend and
 a restful http API to communicate with the service (create new collections, users,
 permissions, download data etc.)
 
 Permissions to collections/trajectories will be made via access tokens (grant per
 user or group with a certain time limit - will probably be another django app).
+
+## Why Django?
+Django is a powerful framework to create full featured web services with support
+for several database backends, transparent data handling, tons of available libraries etc.
+
 
 
 ## Technical features
