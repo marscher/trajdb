@@ -102,7 +102,6 @@ class Trajectory(models.Model):
 @receiver(post_save, sender=Trajectory)
 def update_cumulative_simulation_len(sender, created, instance, **kw):
     if created:
-        assert isinstance(instance, Trajectory)
         instance.collection.cumulative_length += instance.length
         instance.collection.save()
-        print "len:", instance.collection.cumulative_length
+
