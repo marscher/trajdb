@@ -88,6 +88,7 @@ DATABASES = {
 'USER':'trajdb',
 'PASSWORD':'trajdb',
 'HOST':'/var/run/mysqld/mysqld.sock',
+'TEST': {'NAME': 'test_trajdb'},
 }
 }
 
