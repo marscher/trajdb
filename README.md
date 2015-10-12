@@ -26,6 +26,41 @@ a simple command line interface (CLI) or a web service (RESTful API).
 In the following sections we are going to describe the functionalities the
 service will have.
 
+During the registration and upload process of the data the user has to create
+a 'setup' entry, which describes how the simulation has been parametrized.
+The setup entry is then being associated to a collection, which then finally holds
+the individual trajectory entries.
+
+If a collection already exists the trajectories can directly be added to it.
+
+### create a setup
+A setup holds (optionally) all parameters needed to reproduce the results in
+principle.
+
+Important attributes are:
+* topology - this field may contain a blob (and if so an additional column with its type, to interprete the data) 
+* number of atoms
+* a reference pdb (optional)
+* forcefield
+* forcefield parameters
+* simulation software (+version)
+
+### create collections
+A collection holds references to all associated trajectories as well as to the
+setup for the simulation.
+
+Attributes to store:
+* name - a short name
+* description - a brief description of the collection.
+* owner - refers to a user profile on the server.
+* cumulative length - sum of all trajectories in collection (physical time unit). 
+* number of atoms/particles - actually stored in the setup..., but here for performance reasons?
+* setup - reference to a setup entry \ how has this data been generated? 
+
+### meta-collections?
+A collection can be part in multiple meta-collection which helps to catalog
+even more.
+
 ### upload trajectories
 The user can upload individual trajectory files to TrajDB and associate it to
 a collection.
@@ -36,21 +71,26 @@ Attributes to store:
 * timestep - in which interval has the traj been saved?  
 * hash - to (re-)identify the file (prior uploading, to avoid duplicates)
 * collection - to which collection does this traj belong?
+* reference to parent trajectory - if this traj has been "forked" from another
+  traj, remember this "inheritance". Do we need to the frame index?
 
-### create collections
-A collection holds references to all associated trajectories as well as to the
-setup for the simulation.
+### download collection/trajectory
+By specifying the id of a data set the client selects which data he or she wants.
+The server will then answer with a list of URIs, from which the data can be
+downloaded. 
 
-### create a setup
-A setup holds (optionally) all parameters needed to reproduce the results in
-principle. Important attributes are:
-* topology
-* number of atoms
-* forcefield
-* forcefield parameters
-* simulation software (+version)
+Downloads support resuming in case of interuption. Downloaded files can be validated
+with the stored hash value to avoid data corruption.
 
-###   
+### extend trajectory
+There exists a trajectory entry with the same setup in the data base which 
+needs to be prolonged. The user has to specifiy which trajectory will be 
+extended and provides the data. The service ensures that only compatible
+trajectory can be concatenated (eg. by checking the topology and the difference
+of coordinates).
+
+After the submission of the fragment and its validation the server concatenates
+the files in its data store.
 
 ## Service technical details
 To build this API we are using a RESTful
@@ -58,6 +98,24 @@ architecture (respresentational state transfer). So the service will have a
 uniform interface with a few constraints. One of these is that the resources are
 identified in requests (eg. URIs) by the client and interchanged via a common
 representation (eg. XML, JSON) 
+
+## uploading files
+If the file lies on the same (network) filesystem as the data store, we want to avoid passing
+the file through an extra service, but just make a copy. This is a common use case
+in local networks.
+
+Client has to provide some kind of "source" information of the file, the server
+then decides if the file needs to be uploaded or copied.
+
+In case of NFS this could be done via the fsid attribute of the NFS filesystem.
+
+Protocol decision? 
+http server would have to allow very large POST requests, which is not desireable.
+
+Alternatives:
+* FTP - eg. django-ftpserver, create a temporary account for the upload session.
+  Move the uploaded files to the data store on the server side.
+
 
 ## Python API for client interface
 * add\_collection(name, ...) - collection\_context
@@ -83,4 +141,5 @@ It also contains a backreference to the refering collection (Collection context)
 * trajectories(id, name, file\_URI, meta data..., coll\_id, parent\_traj\_id) 
 * users(id, name, mail, ...)
 * collection ownership([collid, userid])
+
 
