@@ -2,7 +2,7 @@
 
 ## Purpose 
 The main purpose of this database is to make simulation results from molecular
-dynamics in form of bundeled trajectory files searchable and downloadable to different working
+dynamics in form of bundled trajectory files search-able and downloadable to different working
 groups. 
 
 The database holds information about a simulated system like used force fields,
@@ -16,11 +16,15 @@ Every participating working group can decide to open their database for the publ
 or not, since they control their own instance of the service.
 
 The individual data is going to be stored in a working group instance of this
-database. This way we avoid uneccessary data duplication and gain a centralized
+database. This way we avoid unnecessary data duplication and gain a centralized
 searchable index for all results produced by a working.
 
 The users can insert their simulation results (trajectories) in the database via
 a simple command line interface (CLI) or a web service (RESTful API).
+
+The user may hold a local instance of the database for offline working and
+synchronization purposes.
+
 
 ## Features 
 In the following sections we are going to describe the functionalities the
@@ -38,12 +42,13 @@ A setup holds (optionally) all parameters needed to reproduce the results in
 principle.
 
 Important attributes are:
-* topology - this field may contain a blob (and if so an additional column with its type, to interprete the data) 
+* topology - this field may contain a blob (and if so an additional column with its type, to interpret the data) 
 * number of atoms
 * a reference pdb (optional)
-* forcefield
-* forcefield parameters
+* force-field
+* force-field parameters
 * simulation software (+version)
+* script - an optional script to run a simulation
 
 ### create collections
 A collection holds references to all associated trajectories as well as to the
@@ -59,14 +64,16 @@ Attributes to store:
 
 ### meta-collections?
 A collection can be part in multiple meta-collection which helps to catalog
-even more.
+even more. A meta-collection can also be part of other meta-collections. This
+way we can build hierarchies of collections.
 
 ### upload trajectories
 The user can upload individual trajectory files to TrajDB and associate it to
 a collection.
 
 Attributes to store:
-* uri - where is the trajectory located?
+
+* uri - where is the trajectory located? (in-case of multiple data stores)
 * n\_frame - how long (in frames) is the trajectory?
 * timestep - in which interval has the traj been saved?  
 * hash - to (re-)identify the file (prior uploading, to avoid duplicates)
@@ -79,12 +86,15 @@ By specifying the id of a data set the client selects which data he or she wants
 The server will then answer with a list of URIs, from which the data can be
 downloaded. 
 
-Downloads support resuming in case of interuption. Downloaded files can be validated
+Downloads support resuming in case of interruption. Downloaded files can be validated
 with the stored hash value to avoid data corruption.
+
+Streaming the file(s) directly (recommended for data store on network file system)
+to the client shall be possible. This avoids unnecessary copies.
 
 ### extend trajectory
 There exists a trajectory entry with the same setup in the data base which 
-needs to be prolonged. The user has to specifiy which trajectory will be 
+needs to be prolonged. The user has to specify which trajectory will be 
 extended and provides the data. The service ensures that only compatible
 trajectory can be concatenated (eg. by checking the topology and the difference
 of coordinates).
@@ -100,9 +110,9 @@ identified in requests (eg. URIs) by the client and interchanged via a common
 representation (eg. XML, JSON) 
 
 ## uploading files
-If the file lies on the same (network) filesystem as the data store, we want to avoid passing
-the file through an extra service, but just make a copy. This is a common use case
-in local networks.
+If the file lies on the same (network) file system as the data store, we want to
+avoid passing the file through an extra service, but just make a copy. This is
+a common use case in local networks.
 
 Client has to provide some kind of "source" information of the file, the server
 then decides if the file needs to be uploaded or copied.
@@ -110,10 +120,10 @@ then decides if the file needs to be uploaded or copied.
 In case of NFS this could be done via the fsid attribute of the NFS filesystem.
 
 Protocol decision? 
-http server would have to allow very large POST requests, which is not desireable.
+HTTP server would have to allow very large POST requests, which is not desirable.
 
 Alternatives:
-* FTP - eg. django-ftpserver, create a temporary account for the upload session.
+* FTP - eg. Django-ftpserver, create a temporary account for the upload session.
   Move the uploaded files to the data store on the server side.
 
 
@@ -129,11 +139,14 @@ Alternatives:
 Error handling is performed via exceptions.
 
 ### Contexts
-The Collection context encapsulates all important fields of collection table and containted trajectory
-ids.
+The Collection context encapsulates all important fields of collection table
+and contained trajectory ids.
 
 A trajectory context contains traj metadata (length, num atoms, reference to topology).
-It also contains a backreference to the refering collection (Collection context).
+It also contains a back-reference to the referring collection (Collection context).
+
+The data-structure used here shall be an ordinary Python dictionary, so we can
+easily exchange those structures via JSON serialization.
 
 ## Database scheme (tables)
 
