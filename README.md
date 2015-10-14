@@ -42,6 +42,7 @@ A setup holds (optionally) all parameters needed to reproduce the results in
 principle.
 
 Important attributes are:
+
 * topology - this field may contain a blob (and if so an additional column with its type, to interpret the data) 
 * number of atoms
 * a reference pdb (optional)
@@ -49,18 +50,21 @@ Important attributes are:
 * force-field parameters
 * simulation software (+version)
 * script - an optional script to run a simulation
+* owner - reference to user profile
 
 ### create collections
 A collection holds references to all associated trajectories as well as to the
 setup for the simulation.
 
 Attributes to store:
+
 * name - a short name
 * description - a brief description of the collection.
 * owner - refers to a user profile on the server.
 * cumulative length - sum of all trajectories in collection (physical time unit). 
 * number of atoms/particles - actually stored in the setup..., but here for performance reasons?
 * setup - reference to a setup entry \ how has this data been generated? 
+* created - timestamp when this collection has been created.
 
 ### meta-collections?
 A collection can be part in multiple meta-collection which helps to catalog
@@ -69,17 +73,22 @@ way we can build hierarchies of collections.
 
 ### upload trajectories
 The user can upload individual trajectory files to TrajDB and associate it to
-a collection.
+a collection. The decision to which collection the file is being added to has
+to be maden prior uploading to avoid loose files.
 
 Attributes to store:
 
 * uri - where is the trajectory located? (in-case of multiple data stores)
 * n\_frame - how long (in frames) is the trajectory?
 * timestep - in which interval has the traj been saved?  
-* hash - to (re-)identify the file (prior uploading, to avoid duplicates)
-* collection - to which collection does this traj belong?
+* hash - to (re-)identify the file (prior uploading, to avoid duplicates) and
+  to verify downloaded files.
+* collection - to which collection does this traj belong? Every traj needs to
+  have at least one collection.
+* created - timestamp when this traj has been created/uploaded.
 * reference to parent trajectory - if this traj has been "forked" from another
-  traj, remember this "inheritance". Do we need to the frame index?
+  traj, remember this "inheritance". Optional 
+* parent traj frame - index of the parent trajs frame. Optional 
 
 ### download collection/trajectory
 By specifying the id of a data set the client selects which data he or she wants.
@@ -96,20 +105,31 @@ to the client shall be possible. This avoids unnecessary copies.
 There exists a trajectory entry with the same setup in the data base which 
 needs to be prolonged. The user has to specify which trajectory will be 
 extended and provides the data. The service ensures that only compatible
-trajectory can be concatenated (eg. by checking the topology and the difference
+trajectories can be concatenated (eg. by checking the topology and the difference
 of coordinates).
 
 After the submission of the fragment and its validation the server concatenates
 the files in its data store.
 
 ## Service technical details
-To build this API we are using a RESTful
-architecture (respresentational state transfer). So the service will have a
-uniform interface with a few constraints. One of these is that the resources are
-identified in requests (eg. URIs) by the client and interchanged via a common
-representation (eg. XML, JSON) 
+To build this API we are using a RESTful architecture (respresentational state
+transfer). So the service will have a uniform interface with a few constraints.
+One of these is that the resources are identified in requests (eg. URIs) by the
+client and interchanged via a common representation (eg. XML, JSON).
 
-## uploading files
+Every entity of the service (like trajectory, collection or setup) has a
+dictionary like structure which can bre requested by the API of the service.
+There is the possibility to request a HTML view of the data to directly obtain
+a human readable representation.
+
+So if the user accesses a collection under http://service/collection/id
+he or she will get a JSON dictionary containing all the important attributes
+and hyperlinks to contained trajectory entities in the form of
+http://service/traj/id
+
+There are also list views available for setups and collections.
+
+### uploading files
 If the file lies on the same (network) file system as the data store, we want to
 avoid passing the file through an extra service, but just make a copy. This is
 a common use case in local networks.
@@ -123,11 +143,12 @@ Protocol decision?
 HTTP server would have to allow very large POST requests, which is not desirable.
 
 Alternatives:
+
 * FTP - eg. Django-ftpserver, create a temporary account for the upload session.
   Move the uploaded files to the data store on the server side.
+* ...
 
-
-## Python API for client interface
+### Python API for client interface
 * add\_collection(name, ...) - collection\_context
 * add\_trajectory(collection, file) - traj\_context (id, new\_name, len, ...) | error (can contain traj ctx of existing traj) 
 * append\_trajectory(traj\_context, file) - traj\_context | error
@@ -138,7 +159,7 @@ Alternatives:
 
 Error handling is performed via exceptions.
 
-### Contexts
+#### Contexts
 The Collection context encapsulates all important fields of collection table
 and contained trajectory ids.
 
@@ -148,7 +169,7 @@ It also contains a back-reference to the referring collection (Collection contex
 The data-structure used here shall be an ordinary Python dictionary, so we can
 easily exchange those structures via JSON serialization.
 
-## Database scheme (tables)
+### Database scheme (tables)
 
 * collections(id, name, pdb(+topology), temperature, ...)
 * trajectories(id, name, file\_URI, meta data..., coll\_id, parent\_traj\_id) 
