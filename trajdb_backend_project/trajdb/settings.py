@@ -37,6 +37,7 @@ INSTALLED_APPS = (
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'apps.trajdb',
 )
 
@@ -79,17 +80,22 @@ WSGI_APPLICATION = 'trajdb.wsgi.application'
         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
     }
 """
+"""
+'default': {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME': 'trajdb',
+    'USER': 'trajdb',
+    'PASSWORD': 'trajdb',
+    'HOST': '/var/run/mysqld/mysqld.sock',
+    'TEST': {'NAME': 'test_trajdb'},
+}"""
 
 DATABASES = {
-
-'default' : {
-'ENGINE': 'django.db.backends.mysql',
-'NAME': 'trajdb',
-'USER':'trajdb',
-'PASSWORD':'trajdb',
-'HOST':'/var/run/mysqld/mysqld.sock',
-'TEST': {'NAME': 'test_trajdb'},
-}
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+        'TEST': {'NAME': os.path.join(BASE_DIR, 'test_db.sqlite3')},
+    }
 }
 
 

@@ -16,6 +16,17 @@ Including another URLconf
 from django.conf.urls import include, url
 from django.contrib import admin
 
-urlpatterns = [
-    url(r'^admin/', include(admin.site.urls)),
-]
+from apps.trajdb import views
+from rest_framework.routers import DefaultRouter
+
+urlpatterns = [url(r'^admin/', include(admin.site.urls)),
+               ]
+
+router = DefaultRouter()
+router.register(r'collections', views.CollectionViewSet, 'collection')
+router.register(r'meta-collections', views.SetupViewSet, 'meta-collection')
+router.register(r'trajectories', views.TrajectoryViewSet, 'trajectory')
+router.register(r'setups', views.SetupViewSet, 'setup')
+router.register(r'users', views.UserViewSet, 'user')
+
+urlpatterns += router.urls
