@@ -9,98 +9,127 @@
 # into your database.
 from __future__ import unicode_literals
 
-from django.conf import settings
+#from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils.translation import ugettext_lazy as _
+#from django.utils.translation import ugettext_lazy as _
 
-from . import managers
+#from . import managers
 
+#
+# class Profile(models.Model):
+#     """A Profile encapsulates an authenticated user. One authed user has
+#        exactly one profile.
+#     """
+#     # Relations
+#     user = models.OneToOneField(
+#         settings.AUTH_USER_MODEL,
+#         related_name="profile",
+#         verbose_name=_("user")
+#     )
+#     # Attributes - Optional
+#     # Object Manager
+#     objects = managers.ProfileManager()
+# 
+#     # Custom Properties
+#     @property
+#     def username(self):
+#         return self.user.username
+# 
+#     # Methods
+# 
+#     # Meta and String
+#     class Meta:
+#         verbose_name = _("Profile")
+#         verbose_name_plural = _("Profiles")
+#         ordering = ("user",)
+# 
+#     def __str__(self):
+#         return self.user.username
+# 
+# # If a new django user is created, we create a "Profile" for this user.
+# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
+# def create_profile_for_new_user(sender, created, instance, **kwargs):
+#     if created:
+#         profile = Profile(user=instance)
+#         profile.save()
 
-class Profile(models.Model):
-    """A Profile encapsulates an authenticated user. One authed user has
-       exactly one profile.
-    """
-    # Relations
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        related_name="profile",
-        verbose_name=_("user")
-    )
-    # Attributes - Optional
-    # Object Manager
-    objects = managers.ProfileManager()
-
-    # Custom Properties
-    @property
-    def username(self):
-        return self.user.username
-
-    # Methods
-
-    # Meta and String
-    class Meta:
-        verbose_name = _("Profile")
-        verbose_name_plural = _("Profiles")
-        ordering = ("user",)
-
-    def __str__(self):
-        return self.user.username
-
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_profile_for_new_user(sender, created, instance, **kwargs):
-    if created:
-        profile = Profile(user=instance)
-        profile.save()
+# class Organisation(models.Model):
+#     name = models.CharField(max_length=64)
+#
+# class OrgaMembership(models.Model):
+#     organisation = models.ForeignKey(Organisation)
 
 
 class Setup(models.Model):
     """ Setup contains the simulation setup like used topology and forcefield
     parameters.
     """
-    #id = models.IntegerField(primary_key=True)
     description = models.CharField(max_length=1000)
     pdb = models.CharField(max_length=4)
+
     program = models.CharField(max_length=20)
     program_version = models.CharField(max_length=10)
+
+    water_model = models.CharField(max_length=20)
+
     topology = models.BinaryField()
-    # TODO: replace with choices?
-    topology_type = models.CharField(max_length=4)
+    topology_type = models.CharField(max_length=8)
+
     forcefield_name = models.CharField(max_length=20)
     forcefield_parameters = models.BinaryField()
     forcefield_parameters_type = models.CharField(max_length=4)
+
+    run_script = models.CharField(max_length=20000, blank=True, null=True)
+
+    owner = models.ForeignKey('auth.User')
+
+    def runable(self):
+        """ is this Setup runable? """
+        return self.run_script is not None
 
 
 class Collection(models.Model):
     """ A collection is associated to one setup and owner.
     """
-    #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
     n_atoms = models.IntegerField(help_text='Number of atoms/particles in the simulation.')
-    cumulative_length = models.PositiveIntegerField(default=0)
+    cumulative_length = models.PositiveIntegerField(default=0, blank=True)
     setup = models.ForeignKey(Setup)
-    owner = models.ForeignKey(Profile)
+    owner = models.ForeignKey('auth.User')
+
+
+class MetaCollection(models.Model):
+    """ allows to create further abstract collections. A collection can be
+    part of none or many meta collections. A meta collection contains multiple collections."""
+
+    name = models.CharField(max_length=100)
+    collection = models.ManyToManyField(Collection)
+    owner = models.ForeignKey('auth.User')
 
 
 class Trajectory(models.Model):
     """Stores a trajectory file associated to a collection.
     Has a unique hash (sha512).
-    Might refer to a parent trajectory from which the actual has been forked from.
+    Can refer to a parent trajectory from which the actual has been forked from.
     """
-    #id = models.IntegerField(primary_key=True)
     name = models.CharField(max_length=255)
     length = models.PositiveIntegerField()
     parent_traj = models.ForeignKey('self', blank=True, null=True)
     collection = models.ForeignKey(Collection)
+
+    # TODO: this is actually private, set by the server and therefore not exposed to API
     uri = models.CharField(max_length=1000)
-    hash_sha512 = models.CharField(max_length=128, unique=True, blank=False)
+    hash_sha512 = models.CharField(max_length=128,
+                                   unique=True, blank=False)
 
 
 @receiver(post_save, sender=Trajectory)
 def update_cumulative_simulation_len(sender, created, instance, **kw):
+    # once we've (successfully) created a trajectory, increment the sum of frames
+    # in the associated collection.
     if created:
         instance.collection.cumulative_length += instance.length
         instance.collection.save()
