@@ -1,3 +1,7 @@
+## Why Django?
+Django is a powerful framework to create full featured web services with support
+for several database backends, transparent data handling, tons of available libraries etc.
+
 ## Description of services
 
 ### Storage
@@ -19,11 +23,14 @@ it is possible to download all files from there.
 
 The protocol should support resuming downloads (HTTP is capable of doing so - impl in client app).
 
+#### URI
 
-## Why Django?
-Django is a powerful framework to create full featured web services with support
-for several database backends, transparent data handling, tons of available libraries etc.
+The unified resource identifier associated with each trajectory can look like this:
 
+trajdb://instance:port/collection/trajname
+
+The service translates this into a file:/// uri and presents this via the web-server
+to the client who requested the download.
 
 
 ## Technical features
