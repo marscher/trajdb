@@ -9,57 +9,11 @@
 # into your database.
 from __future__ import unicode_literals
 
-#from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-#from django.utils.translation import ugettext_lazy as _
 
-#from . import managers
-
-#
-# class Profile(models.Model):
-#     """A Profile encapsulates an authenticated user. One authed user has
-#        exactly one profile.
-#     """
-#     # Relations
-#     user = models.OneToOneField(
-#         settings.AUTH_USER_MODEL,
-#         related_name="profile",
-#         verbose_name=_("user")
-#     )
-#     # Attributes - Optional
-#     # Object Manager
-#     objects = managers.ProfileManager()
-# 
-#     # Custom Properties
-#     @property
-#     def username(self):
-#         return self.user.username
-# 
-#     # Methods
-# 
-#     # Meta and String
-#     class Meta:
-#         verbose_name = _("Profile")
-#         verbose_name_plural = _("Profiles")
-#         ordering = ("user",)
-# 
-#     def __str__(self):
-#         return self.user.username
-# 
-# # If a new django user is created, we create a "Profile" for this user.
-# @receiver(post_save, sender=settings.AUTH_USER_MODEL)
-# def create_profile_for_new_user(sender, created, instance, **kwargs):
-#     if created:
-#         profile = Profile(user=instance)
-#         profile.save()
-
-# class Organisation(models.Model):
-#     name = models.CharField(max_length=64)
-#
-# class OrgaMembership(models.Model):
-#     organisation = models.ForeignKey(Organisation)
+from .traj_storage import TrajStorage
 
 
 class Setup(models.Model):
@@ -81,7 +35,8 @@ class Setup(models.Model):
     forcefield_parameters = models.BinaryField()
     forcefield_parameters_type = models.CharField(max_length=4)
 
-    run_script = models.CharField(max_length=20000, blank=True, null=True)
+    run_script = models.TextField(blank=True, null=True,
+                                  help_text='optional script to run a simulation with this setup')
 
     owner = models.ForeignKey('auth.User')
 
@@ -95,10 +50,11 @@ class Collection(models.Model):
     """
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    n_atoms = models.IntegerField(help_text='Number of atoms/particles in the simulation.')
+    n_atoms = models.IntegerField(
+        help_text='Number of atoms/particles in the simulation.')
     cumulative_length = models.PositiveIntegerField(default=0, blank=True)
     setup = models.ForeignKey(Setup)
-    owner = models.ForeignKey('auth.User')
+    owner = models.ForeignKey('auth.User', related_name='collection')
 
 
 class MetaCollection(models.Model):
@@ -116,14 +72,15 @@ class Trajectory(models.Model):
     Can refer to a parent trajectory from which the actual has been forked from.
     """
     name = models.CharField(max_length=255)
-    length = models.PositiveIntegerField()
+    data = models.FileField()#storage=TrajStorage, blank=True, null=True)
+    length = models.PositiveIntegerField(help_text='length in frames', default=0)
     parent_traj = models.ForeignKey('self', blank=True, null=True)
     collection = models.ForeignKey(Collection)
 
-    # TODO: this is actually private, set by the server and therefore not exposed to API
     uri = models.CharField(max_length=1000)
-    hash_sha512 = models.CharField(max_length=128,
-                                   unique=True, blank=False)
+    hash_sha512 = models.CharField(max_length=128, unique=True)
+    created = models.DateTimeField(auto_now_add=True)
+    owner = models.ForeignKey('auth.User', related_name='trajectory')
 
 
 @receiver(post_save, sender=Trajectory)
@@ -132,5 +89,6 @@ def update_cumulative_simulation_len(sender, created, instance, **kw):
     # in the associated collection.
     if created:
         instance.collection.cumulative_length += instance.length
+        # TODO: determine length with mdtraj etc.
+        instance.length = 0
         instance.collection.save()
-

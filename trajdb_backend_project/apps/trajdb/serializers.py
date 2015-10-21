@@ -24,6 +24,7 @@ class MetaCollectionSerializer(serializers.HyperlinkedModelSerializer):
 
 class CollectionSerializer(serializers.HyperlinkedModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
+    # the backend keeps track of this field
     cumulative_length = serializers.ReadOnlyField()
 
     class Meta:
@@ -38,19 +39,42 @@ class CollectionSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class TrajectorySerializer(serializers.HyperlinkedModelSerializer):
-    upload_file = serializers.FileField()
-
-    # FilePathField(path, match=None, recursive=False, allow_files=True,
-    # allow_folders=False, required=None, **kwargs
+    # handled by backend
+    owner = serializers.ReadOnlyField(source='owner.username')
+    uri = serializers.ReadOnlyField()
+    length = serializers.ReadOnlyField()
+    #data = serializers.FileField()
+#     data = serializers.SerializerMethodField('get_uri')
+#     def get_uri(self, obj):
+#         return str(obj.uri)
 
     class Meta:
         model = Trajectory
+        fields = ('name',
+                  'data',
+                  'length',
+                  'parent_traj',
+                  'collection',
+                  'uri',
+                  'hash_sha512',
+                  'created',
+                  'owner',
+                  )
 
+
+#     def create(self,*a,**kw):
+#         instance = super(TrajectorySerializer, self).create(*a, **kw)
+#         instance.length=0
+#         instance.save()
+#         return instance
+        """
+        try:
+            import mdtraj
+            with mdtraj.open(instance.data)
+"""
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
-    collections = serializers.HyperlinkedRelatedField(queryset=Collection.objects.all(),
-                                                      view_name='snippet-detail', many=True)
 
     class Meta:
         model = User
-        fields = ('url', 'username', 'collections')
+        fields = ('url', 'username')

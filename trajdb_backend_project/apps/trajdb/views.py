@@ -14,12 +14,22 @@ from .serializers import (CollectionSerializer,
                           UserSerializer
                           )
 
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework import viewsets
 
 from .permissions import IsOwnerOrReadOnly
+from rest_framework.response import Response
 
-## Users
+
+# helper class:
+class ModelViewSet_withOwner(viewsets.ModelViewSet):
+    # store the creator in the model
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+# Users
+
+
 class UserViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -33,26 +43,20 @@ class UserDetail(generics.RetrieveAPIView):
 ##########################################################################
 # Trajectories and setups
 
-
 class TrajectoryViewSet(viewsets.ModelViewSet):
+    from rest_framework.parsers import MultiPartParser, FormParser
     queryset = Trajectory.objects.all()
     serializer_class = TrajectorySerializer
-
-
-from rest_framework.parsers import MultiPartParser, FormParser
-class TrajectoryDetails(generics.RetrieveUpdateDestroyAPIView):
     parser_classes = (MultiPartParser, FormParser,)
+    permission_classes = (IsOwnerOrReadOnly, )
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
+class TrajectoryDetails(generics.RetrieveUpdateDestroyAPIView):
     queryset = Trajectory.objects.all()
     serializer_class = TrajectorySerializer
-
-    def post(self, request, format=None):
-        my_file = request.FILES['file_field_name']
-        filename = '/tmp/myfile'
-        with open(filename, 'wb+') as temp_file:
-            for chunk in my_file.chunks():
-                temp_file.write(chunk)
-
-        #my_saved_file = open(filename) #there you go
 
 
 class SetupViewSet(viewsets.ModelViewSet):
@@ -68,7 +72,7 @@ class SetupDetail(generics.RetrieveUpdateDestroyAPIView):
 # Collections
 
 
-class CollectionViewSet(viewsets.ModelViewSet):
+class CollectionViewSet(ModelViewSet_withOwner):
     queryset = Collection.objects.all()
     serializer_class = CollectionSerializer
     permission_classes = (IsOwnerOrReadOnly, )
@@ -77,10 +81,6 @@ class CollectionViewSet(viewsets.ModelViewSet):
 class CollectionDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Collection.objects.all()
     serializer_class = CollectionSerializer
-
-    def perform_create(self, serializer):
-        print "hiiiiiiiiiiiiiiiiiiiiii"
-        serializer.save(owner=self.request.user)
 
 
 class MetaCollectionViewSet(viewsets.ModelViewSet):
