@@ -75,8 +75,8 @@ WSGI_APPLICATION = 'trajdb.wsgi.application'
 
 # file upload handlers
 FILE_UPLOAD_HANDLERS = ['django.core.files.uploadhandler.TemporaryFileUploadHandler']
-FILE_UPLOAD_TEMP_DIR = '/tmp/trajdb/'
-MEDIA_ROOT='/home/marscher/trajdb'
+#FILE_UPLOAD_TEMP_DIR = '/tmp/trajdb/'
+MEDIA_ROOT = 'datastore'
 
 # Database
 # https://docs.djangoproject.com/en/1.8/ref/settings/#databases
