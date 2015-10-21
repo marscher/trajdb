@@ -22,6 +22,11 @@ from rest_framework.routers import DefaultRouter
 urlpatterns = [url(r'^admin/', include(admin.site.urls)),
                ]
 
+urlpatterns += [
+    url(r'^api-auth/', include('rest_framework.urls',
+                               namespace='rest_framework')),
+]
+
 router = DefaultRouter()
 router.register(r'collections', views.CollectionViewSet, 'collection')
 router.register(r'meta-collections', views.SetupViewSet, 'meta-collection')
