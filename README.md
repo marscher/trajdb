@@ -52,6 +52,12 @@ Important attributes are:
 * script - an optional script to run a simulation
 * owner - reference to user profile
 
+Questions:
+
+* do we want to store the full topology information (bonds, angles etc) or just
+  plain coordinates and (let) derive this information for (or by) the user?
+
+
 ### create collections
 A collection holds references to all associated trajectories as well as to the
 setup for the simulation.
@@ -175,5 +181,4 @@ easily exchange those structures via JSON serialization.
 * trajectories(id, name, file\_URI, meta data..., coll\_id, parent\_traj\_id) 
 * users(id, name, mail, ...)
 * collection ownership([collid, userid])
-
 
