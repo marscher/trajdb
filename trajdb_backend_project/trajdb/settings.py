@@ -79,8 +79,8 @@ WSGI_APPLICATION = 'trajdb.wsgi.application'
 # TODO: create custom handler to hash the file while it is being uploaded
 #FILE_UPLOAD_HANDLERS = ['django.core.files.uploadhandler.TemporaryFileUploadHandler']
 FILE_UPLOAD_HANDLERS = ['apps.trajdb.filehandling.hash_while_upload_handler.HashWhileWriteUploadHandler']
-FILE_UPLOAD_TEMP_DIR = 'datastore/tmp/'
-MEDIA_ROOT = 'datastore'
+FILE_UPLOAD_TEMP_DIR = '/tmp/'
+MEDIA_ROOT = 'datastore' # resides next to the application.
 MEDIA_URL = 'http://localhost:8000/download/'
 
 # Database
