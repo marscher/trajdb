@@ -31,7 +31,7 @@ urlpatterns += [
 
 router = DefaultRouter()
 router.register(r'collections', views.CollectionViewSet, 'collection')
-router.register(r'meta-collections', views.SetupViewSet, 'meta-collection')
+router.register(r'meta-collections', views.MetaCollectionViewSet, 'meta-collection')
 router.register(r'trajectories', views.TrajectoryViewSet, 'trajectory')
 router.register(r'setups', views.SetupViewSet, 'setup')
 router.register(r'users', views.UserViewSet, 'user')
