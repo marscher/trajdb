@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from apps.trajdb.filehandling.traj_storage import TrajStorage
 from trajdb import settings
 import os
+from rest_framework.exceptions import UnsupportedMediaType
 
 fs = TrajStorage(settings.MEDIA_ROOT)
 
@@ -53,24 +54,29 @@ class Topology(models.Model):
 
     def save(self, *args, **kw):
         if not self.pk:  # new object
-            #print(self.top_file.name, self.top_file.path)
-            instance = self
             import mdtraj
+            from mdtraj.formats.registry import _FormatRegistry as reg
 
             # TODO: avoid this hack of symlinking the temporary file
-            top_file_faked = instance.top_file.path
-            top_file_real = instance.top_file.file.file.name
+            top_file_faked = self.top_file.path
+            top_file_real = self.top_file.file.file.name
+            _, ext = os.path.splitext(top_file_faked)
+
+            if ext not in reg.loaders:
+                raise UnsupportedMediaType(ext, "supported media file extensions: %s"
+                                           % reg.loaders.keys())
+
             os.symlink(top_file_real, top_file_faked)
-
             top = mdtraj.load(top_file_faked)
+            os.unlink(top_file_faked)
 
-            instance.n_atoms = top.n_atoms
-            instance.n_residues = top.n_residues
-            instance.n_chains = top.n_chains
+            self.n_atoms = top.n_atoms
+            self.n_residues = top.n_residues
+            self.n_chains = top.n_chains
 
-            instance.unitcell_volume = top.unitcell_volumes[0]
-            instance.unitcell_vectors = top.unitcell_vectors
-            instance.unitcell_angles = top.unitcell_angles
+            self.unitcell_volume = top.unitcell_volumes[0]
+            self.unitcell_vectors = top.unitcell_vectors
+            self.unitcell_angles = top.unitcell_angles
 
         super(Topology, self).save(*args, **kw)
 

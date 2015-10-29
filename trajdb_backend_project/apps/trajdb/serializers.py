@@ -42,13 +42,13 @@ class CollectionSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Collection
-        fields = ('name',
-                  'description',
-                  'n_atoms',
-                  'cumulative_length',
-                  'setup',
-                  'owner'
-                  )
+#         fields = ('name',
+#                   'description',
+#                   'n_atoms',
+#                   'cumulative_length',
+#                   'setup',
+#                   'owner'
+#                   )
 
 
 class TrajectorySerializer(serializers.HyperlinkedModelSerializer):
