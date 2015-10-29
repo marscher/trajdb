@@ -63,7 +63,9 @@ class Topology(models.Model):
             _, ext = os.path.splitext(top_file_faked)
 
             if ext not in reg.loaders:
-                raise UnsupportedMediaType(ext, "supported media file extensions: %s"
+                raise UnsupportedMediaType(ext, "The extension of the uploaded"
+                                           " topology file is not supported! "
+                                           "Unsupported media file extensions: %s"
                                            % reg.loaders.keys())
 
             os.symlink(top_file_real, top_file_faked)
