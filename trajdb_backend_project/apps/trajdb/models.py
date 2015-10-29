@@ -135,8 +135,6 @@ class Collection(models.Model):
     """
     name = models.CharField(max_length=255)
     description = models.CharField(max_length=255)
-    n_atoms = models.IntegerField(
-        help_text='Number of atoms/particles in the simulation.')
     cumulative_length = models.PositiveIntegerField(default=0, blank=True)
     setup = models.ForeignKey(Setup)
     owner = models.ForeignKey('auth.User', related_name='collection')
