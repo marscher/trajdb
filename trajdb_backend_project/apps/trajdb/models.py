@@ -7,11 +7,35 @@ from django.dispatch import receiver
 from apps.trajdb.filehandling.traj_storage import TrajStorage
 from trajdb import settings
 import os
-from rest_framework.exceptions import UnsupportedMediaType
+from rest_framework.exceptions import UnsupportedMediaType, ParseError
+from contextlib import contextmanager
+import mdtraj
+
 
 fs = TrajStorage(settings.MEDIA_ROOT)
 
 fs2 = TrajStorage(settings.MEDIA_ROOT)
+
+
+@contextmanager
+def _symlink_workaround_temp_uploaded_file(file_field, check_open_by_mdtraj=True):
+    # TODO: avoid this hack of symlinking the temporary file
+    top_file_faked = file_field.path
+    top_file_real = file_field.file.file.name
+    _, ext = os.path.splitext(top_file_faked)
+
+    if check_open_by_mdtraj:
+        from mdtraj.formats.registry import _FormatRegistry as reg
+        if ext not in reg.loaders:
+            raise UnsupportedMediaType(ext, "The extension of the uploaded"
+                                       " topology file is not supported! "
+                                       "Unsupported media file extensions: %s"
+                                       % reg.loaders.keys())
+    os.symlink(top_file_real, top_file_faked)
+    try:
+        yield top_file_faked
+    finally:
+        os.unlink(top_file_faked)
 
 
 def _upload_topology_file_path(instance, filename):
@@ -55,56 +79,21 @@ class Topology(models.Model):
     def save(self, *args, **kw):
         if not self.pk:  # new object
             import mdtraj
-            from mdtraj.formats.registry import _FormatRegistry as reg
 
             # TODO: avoid this hack of symlinking the temporary file
-            top_file_faked = self.top_file.path
-            top_file_real = self.top_file.file.file.name
-            _, ext = os.path.splitext(top_file_faked)
 
-            if ext not in reg.loaders:
-                raise UnsupportedMediaType(ext, "The extension of the uploaded"
-                                           " topology file is not supported! "
-                                           "Unsupported media file extensions: %s"
-                                           % reg.loaders.keys())
+            with _symlink_workaround_temp_uploaded_file(self.top_file) as f:
+                top = mdtraj.load(f)
 
-            os.symlink(top_file_real, top_file_faked)
-            top = mdtraj.load(top_file_faked)
-            os.unlink(top_file_faked)
+                self.n_atoms = top.n_atoms
+                self.n_residues = top.n_residues
+                self.n_chains = top.n_chains
 
-            self.n_atoms = top.n_atoms
-            self.n_residues = top.n_residues
-            self.n_chains = top.n_chains
-
-            self.unitcell_volume = top.unitcell_volumes[0]
-            self.unitcell_vectors = top.unitcell_vectors
-            self.unitcell_angles = top.unitcell_angles
+                self.unitcell_volume = top.unitcell_volumes[0]
+                self.unitcell_vectors = top.unitcell_vectors
+                self.unitcell_angles = top.unitcell_angles
 
         super(Topology, self).save(*args, **kw)
-
-
-# @receiver(post_save)
-# def set_topology_attributes(sender, instance, *args, **kw):
-#     import mdtraj
-#     # TODO: handle errors (eg. non parseable file etc.)
-#     top = mdtraj.load(instance.top_file.path)
-#
-#     update_args = dict(n_atoms =top.n_atoms,
-#                    n_residues= top.n_residues,
-#                    n_chains= top.n_chains,
-#                    unitcell_volume= top.unitcell_volumes[0],
-#                    unitcell_vectors= top.unitcell_vectors,
-#                    unitcell_angles=top.unitcell_angles)
-#
-# #     instance.n_atoms = top.n_atoms
-# #     instance.n_residues = top.n_residues
-# #     instance.n_chains = top.n_chains
-# #
-# #     instance.volume = top.unitcell_volumes[0]
-# #     instance.box_vectors = top.unitcell_vectors
-# #     instance.box_angles = top.unitcell_angles
-#
-#     Topology.objects.filter(pk=instance.pk).update(**update_args)
 
 
 class Setup(models.Model):
@@ -168,7 +157,7 @@ class Trajectory(models.Model):
     parent_traj = models.ForeignKey('self', blank=True, null=True)
     collection = models.ForeignKey(Collection)
 
-    uri = models.CharField(max_length=1000)
+    #uri = models.CharField(max_length=1000)
     # TODO: unique -> true + check
     hash_sha512 = models.CharField(max_length=128, unique=False)
     created = models.DateTimeField(auto_now_add=True)
@@ -176,6 +165,13 @@ class Trajectory(models.Model):
 
     def save(self, *args, **kw):
         if not self.pk:  # new file
+
+            # get length
+            with _symlink_workaround_temp_uploaded_file(self.data) as f:
+                with mdtraj.open(f) as traj:
+                    self.length += len(traj)
+
+            # validate hash
             import hashlib
             func = hashlib.sha512()
             for chunk in self.data.chunks():
@@ -183,21 +179,11 @@ class Trajectory(models.Model):
 
             computed_hash = func.hexdigest()
             if not computed_hash == self.hash_sha512:
-                # TODO: more django style exception handling?
-                raise Exception("uploaded trajectory has different hash value than promised: "
-                                "promised = \t\t%s\ncomputed on server side:\t%s"
-                                % (self.hash_sha512, computed_hash))
+                raise ParseError("Uploaded trajectory has different hash value than promised: "
+                                 "promised = \t\t%s\ncomputed on server side:\t%s"
+                                 % (self.hash_sha512, computed_hash))
 
         super(Trajectory, self).save(*args, **kw)
-
-
-def determine_length(file):
-    import mdtraj
-    try:
-        with mdtraj.open(file) as fh:
-            return len(fh)
-    except:
-        raise
 
 
 @receiver(post_save, sender=Trajectory)
@@ -205,10 +191,6 @@ def update_cumulative_simulation_len(sender, created, instance, **kw):
     # once we've (successfully) created a trajectory, increment the sum of frames
     # in the associated collection.
     if created:
-        # determine length of file
-        instance.length = determine_length(instance.data.path)
         # update cumulative length
         instance.collection.cumulative_length += instance.length
         instance.collection.save()
-
-        # move_traj_data_to_collection_subfolder(instance)
