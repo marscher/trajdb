@@ -179,9 +179,9 @@ class Trajectory(models.Model):
 
             computed_hash = func.hexdigest()
             if not computed_hash == self.hash_sha512:
-                raise ParseError("Uploaded trajectory has different hash value than promised: "
-                                 "promised = \t\t%s\ncomputed on server side:\t%s"
-                                 % (self.hash_sha512, computed_hash))
+                raise ParseError(["Uploaded trajectory has different hash value than promised ",
+                                  {"promised": self.hash_sha512,
+                                   "received": computed_hash}])
 
         super(Trajectory, self).save(*args, **kw)
 
