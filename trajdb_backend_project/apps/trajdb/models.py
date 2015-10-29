@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 
 from django.db import models
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from apps.trajdb.filehandling.traj_storage import TrajStorage
@@ -39,36 +39,64 @@ class Topology(models.Model):
     n_residues = models.PositiveIntegerField(null=True)
     n_chains = models.PositiveIntegerField(default=1)
 
-    box_vectors = models.CharField(max_length=200, blank=True, null=True)
-    volume = models.FloatField(help_text='box volume in [nm]^3')
+    unitcell_vectors = models.CharField(max_length=200, blank=True, null=True)
+    unitcell_angles = models.CharField(max_length=200, null=True)
+    unitcell_volume = models.FloatField(
+        help_text='box volume in [nm]^3', null=True)
 
-    top_file = models.FileField(storage=fs2, upload_to=_upload_topology_file_path)
+    top_file = models.FileField(
+        storage=fs2, upload_to=_upload_topology_file_path)
     pdb_id = models.CharField(max_length=4, blank=True, null=True,
                               help_text='if this topology is derived from an entry'
                               ' in protein database, please link it here.')
     #type = models.CharField(max_length=10, blank=True, null=True, default='pdb')
 
-#     def save(self, *args, **kw):
-#         if not self.pk:  # new object
-#             #print(self.top_file.name, self.top_file.path)
-# 
-# 
-#         super(Topology, self).save(*args, **kw)
+    def save(self, *args, **kw):
+        if not self.pk:  # new object
+            #print(self.top_file.name, self.top_file.path)
+            instance = self
+            import mdtraj
 
-@receiver(pre_save)
-def set_topology_attributes(sender, instance, *args, **kw):
-    import mdtraj
-    self = instance
-    # TODO: handle errors (eg. non parseable file etc.)
-    top = mdtraj.load(self.top_file.file.file.name)
+            # TODO: avoid this hack of symlinking the temporary file
+            top_file_faked = instance.top_file.path
+            top_file_real = instance.top_file.file.file.name
+            os.symlink(top_file_real, top_file_faked)
 
-    self.n_atoms = top.n_atoms
-    self.n_residues = top.n_residues
-    self.n_chains = top.n_chains
+            top = mdtraj.load(top_file_faked)
 
-    self.volume = top.unitcell_volume[0]
-    self.box_vectors = top.unitcell_vectors
-    self.box_angles = top.unitcell_angles
+            instance.n_atoms = top.n_atoms
+            instance.n_residues = top.n_residues
+            instance.n_chains = top.n_chains
+
+            instance.unitcell_volume = top.unitcell_volumes[0]
+            instance.unitcell_vectors = top.unitcell_vectors
+            instance.unitcell_angles = top.unitcell_angles
+
+        super(Topology, self).save(*args, **kw)
+
+
+# @receiver(post_save)
+# def set_topology_attributes(sender, instance, *args, **kw):
+#     import mdtraj
+#     # TODO: handle errors (eg. non parseable file etc.)
+#     top = mdtraj.load(instance.top_file.path)
+#
+#     update_args = dict(n_atoms =top.n_atoms,
+#                    n_residues= top.n_residues,
+#                    n_chains= top.n_chains,
+#                    unitcell_volume= top.unitcell_volumes[0],
+#                    unitcell_vectors= top.unitcell_vectors,
+#                    unitcell_angles=top.unitcell_angles)
+#
+# #     instance.n_atoms = top.n_atoms
+# #     instance.n_residues = top.n_residues
+# #     instance.n_chains = top.n_chains
+# #
+# #     instance.volume = top.unitcell_volumes[0]
+# #     instance.box_vectors = top.unitcell_vectors
+# #     instance.box_angles = top.unitcell_angles
+#
+#     Topology.objects.filter(pk=instance.pk).update(**update_args)
 
 
 class Setup(models.Model):
@@ -88,6 +116,7 @@ class Setup(models.Model):
     topology = models.ForeignKey(Topology)
 
     forcefield_name = models.CharField(max_length=20)
+    # TODO: make this another field?
     forcefield_parameters = models.BinaryField()
     forcefield_parameters_type = models.CharField(max_length=4)
 

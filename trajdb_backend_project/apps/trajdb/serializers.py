@@ -13,21 +13,14 @@ from .models import (MetaCollection, Collection, Trajectory, Setup, Topology)
 class TopologySerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Topology
+
     n_atoms = serializers.ReadOnlyField()
     n_residues = serializers.ReadOnlyField()
     n_chains = serializers.ReadOnlyField()
 
-    box_vectors = serializers.ReadOnlyField()
-    box_angles = serializers.ReadOnlyField()
-    volume = serializers.ReadOnlyField()
-# 
-#         fields = ('n_atoms',
-#                   'n_residues',
-#                   'n_chains',
-#                   'pdb_id',
-#                   'top_file',
-#                   'type',
-#                   )
+    unitcell_vectors = serializers.ReadOnlyField()
+    unitcell_angles = serializers.ReadOnlyField()
+    unitcell_volume = serializers.ReadOnlyField()
 
 
 class SetupSerializer(serializers.HyperlinkedModelSerializer):
