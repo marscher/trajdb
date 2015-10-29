@@ -7,7 +7,27 @@ Created on 19.10.2015
 from rest_framework import serializers
 from django.contrib.auth.models import User
 
-from .models import (MetaCollection, Collection, Trajectory, Setup)
+from .models import (MetaCollection, Collection, Trajectory, Setup, Topology)
+
+
+class TopologySerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = Topology
+    n_atoms = serializers.ReadOnlyField()
+    n_residues = serializers.ReadOnlyField()
+    n_chains = serializers.ReadOnlyField()
+
+    box_vectors = serializers.ReadOnlyField()
+    box_angles = serializers.ReadOnlyField()
+    volume = serializers.ReadOnlyField()
+# 
+#         fields = ('n_atoms',
+#                   'n_residues',
+#                   'n_chains',
+#                   'pdb_id',
+#                   'top_file',
+#                   'type',
+#                   )
 
 
 class SetupSerializer(serializers.HyperlinkedModelSerializer):
@@ -43,15 +63,10 @@ class TrajectorySerializer(serializers.HyperlinkedModelSerializer):
     owner = serializers.ReadOnlyField(source='owner.username')
     uri = serializers.ReadOnlyField()
     length = serializers.ReadOnlyField()
-    #data = serializers.FileField()
-#     data = serializers.SerializerMethodField('get_uri')
-#     def get_uri(self, obj):
-#         return str(obj.uri)
 
     class Meta:
         model = Trajectory
-        fields = ('name',
-                  'data',
+        fields = ('data',
                   'length',
                   'parent_traj',
                   'collection',
@@ -61,17 +76,6 @@ class TrajectorySerializer(serializers.HyperlinkedModelSerializer):
                   'owner',
                   )
 
-
-#     def create(self,*a,**kw):
-#         instance = super(TrajectorySerializer, self).create(*a, **kw)
-#         instance.length=0
-#         instance.save()
-#         return instance
-        """
-        try:
-            import mdtraj
-            with mdtraj.open(instance.data)
-"""
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
 

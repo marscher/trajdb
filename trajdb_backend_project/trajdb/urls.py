@@ -22,18 +22,17 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 urlpatterns = [url(r'^admin/', include(admin.site.urls)),
+               url(r'^api-auth/', include('rest_framework.urls',
+                                          namespace='rest_framework')),
                ]
 
-urlpatterns += [
-    url(r'^api-auth/', include('rest_framework.urls',
-                               namespace='rest_framework')),
-]
-
 router = DefaultRouter()
+router.register(
+    r'meta-collections', views.MetaCollectionViewSet, 'meta-collection')
 router.register(r'collections', views.CollectionViewSet, 'collection')
-router.register(r'meta-collections', views.MetaCollectionViewSet, 'meta-collection')
-router.register(r'trajectories', views.TrajectoryViewSet, 'trajectory')
+router.register(r'topologies', views.TopologyViewSet, 'topology')
 router.register(r'setups', views.SetupViewSet, 'setup')
+router.register(r'trajectories', views.TrajectoryViewSet, 'trajectory')
 router.register(r'users', views.UserViewSet, 'user')
 
 urlpatterns += router.urls

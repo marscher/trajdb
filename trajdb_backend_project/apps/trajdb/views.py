@@ -3,6 +3,7 @@ from .models import (MetaCollection,
                      Collection,
                      Trajectory,
                      Setup,
+                     Topology,
                      )
 from django.contrib.auth.models import User
 
@@ -11,19 +12,20 @@ from .serializers import (CollectionSerializer,
                           MetaCollectionSerializer,
                           TrajectorySerializer,
                           SetupSerializer,
+                          TopologySerializer,
                           UserSerializer
                           )
 
-from rest_framework import generics, status
+from rest_framework import generics
 from rest_framework import viewsets
 
 from .permissions import IsOwnerOrReadOnly
-from rest_framework.response import Response
 
 
 # helper class:
 class ModelViewSet_withOwner(viewsets.ModelViewSet):
     # store the creator in the model
+
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
@@ -67,6 +69,17 @@ class SetupViewSet(viewsets.ModelViewSet):
 class SetupDetail(generics.RetrieveUpdateDestroyAPIView):
     queryset = Setup.objects.all()
     serializer_class = SetupSerializer
+
+
+class TopologyViewSet(viewsets.ModelViewSet):
+    queryset = Topology.objects.all()
+    serializer_class = TopologySerializer
+
+
+class TopologyDetails(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Topology.objects.all()
+    serializer_class = TopologySerializer
+
 
 ##########################################################################
 # Collections

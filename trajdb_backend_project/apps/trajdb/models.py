@@ -1,35 +1,91 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
-#
-# Also note: You'll have to insert the output of 'django-admin sqlcustom [app_label]'
-# into your database.
 from __future__ import unicode_literals
 
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
-from .traj_storage import TrajStorage
+from apps.trajdb.filehandling.traj_storage import TrajStorage
+from trajdb import settings
+import os
+
+fs = TrajStorage(settings.MEDIA_ROOT)
+
+fs2 = TrajStorage(settings.MEDIA_ROOT)
+
+
+def _upload_topology_file_path(instance, filename):
+    # store topology file in the collection space
+    import uuid
+    _, ext = os.path.splitext(filename)
+    new_fn = uuid.uuid5(uuid.NAMESPACE_DNS, filename).hex
+    new_name = '/'.join((settings.TRAJ_SUBDIR, 'top', new_fn)) + ext
+    return new_name
+
+
+def _upload_trajectory_file_path(traj_inst, filename):
+    _, ext = os.path.splitext(filename)
+    coll = traj_inst.collection.id
+    trajs_in_collection = Trajectory.objects.filter(
+        collection__id=coll).count()
+
+    count_nr = "{:0>6d}".format(trajs_in_collection)
+
+    return '/'.join((settings.TRAJ_SUBDIR, traj_inst.collection.name,
+                     traj_inst.collection.setup.name + "_" + count_nr + ext))
+
+
+class Topology(models.Model):
+    n_atoms = models.PositiveIntegerField(null=True)
+    n_residues = models.PositiveIntegerField(null=True)
+    n_chains = models.PositiveIntegerField(default=1)
+
+    box_vectors = models.CharField(max_length=200, blank=True, null=True)
+    volume = models.FloatField(help_text='box volume in [nm]^3')
+
+    top_file = models.FileField(storage=fs2, upload_to=_upload_topology_file_path)
+    pdb_id = models.CharField(max_length=4, blank=True, null=True,
+                              help_text='if this topology is derived from an entry'
+                              ' in protein database, please link it here.')
+    #type = models.CharField(max_length=10, blank=True, null=True, default='pdb')
+
+#     def save(self, *args, **kw):
+#         if not self.pk:  # new object
+#             #print(self.top_file.name, self.top_file.path)
+# 
+# 
+#         super(Topology, self).save(*args, **kw)
+
+@receiver(pre_save)
+def set_topology_attributes(sender, instance, *args, **kw):
+    import mdtraj
+    self = instance
+    # TODO: handle errors (eg. non parseable file etc.)
+    top = mdtraj.load(self.top_file.file.file.name)
+
+    self.n_atoms = top.n_atoms
+    self.n_residues = top.n_residues
+    self.n_chains = top.n_chains
+
+    self.volume = top.unitcell_volume[0]
+    self.box_vectors = top.unitcell_vectors
+    self.box_angles = top.unitcell_angles
 
 
 class Setup(models.Model):
     """ Setup contains the simulation setup like used topology and forcefield
     parameters.
     """
+    name = models.CharField(max_length=60)
     description = models.CharField(max_length=1000)
-    pdb = models.CharField(max_length=4)
+
+    temperature = models.IntegerField(help_text="simulation temperature in K")
 
     program = models.CharField(max_length=20)
     program_version = models.CharField(max_length=10)
 
     water_model = models.CharField(max_length=20)
 
-    topology = models.BinaryField()
-    topology_type = models.CharField(max_length=8)
+    topology = models.ForeignKey(Topology)
 
     forcefield_name = models.CharField(max_length=20)
     forcefield_parameters = models.BinaryField()
@@ -71,16 +127,42 @@ class Trajectory(models.Model):
     Has a unique hash (sha512).
     Can refer to a parent trajectory from which the actual has been forked from.
     """
-    name = models.CharField(max_length=255)
-    data = models.FileField()#storage=TrajStorage, blank=True, null=True)
-    length = models.PositiveIntegerField(help_text='length in frames', default=0)
+    data = models.FileField(storage=fs, upload_to=_upload_trajectory_file_path)
+    length = models.PositiveIntegerField(
+        help_text='length in frames', default=0)
     parent_traj = models.ForeignKey('self', blank=True, null=True)
     collection = models.ForeignKey(Collection)
 
     uri = models.CharField(max_length=1000)
-    hash_sha512 = models.CharField(max_length=128, unique=True)
+    # TODO: unique -> true + check
+    hash_sha512 = models.CharField(max_length=128, unique=False)
     created = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey('auth.User', related_name='trajectory')
+
+    def save(self, *args, **kw):
+        if not self.pk:  # new file
+            import hashlib
+            func = hashlib.sha512()
+            for chunk in self.data.chunks():
+                func.update(chunk)
+
+            computed_hash = func.hexdigest()
+            if not computed_hash == self.hash_sha512:
+                # TODO: more django style exception handling?
+                raise Exception("uploaded trajectory has different hash value than promised: "
+                                "promised = \t\t%s\ncomputed on server side:\t%s"
+                                % (self.hash_sha512, computed_hash))
+
+        super(Trajectory, self).save(*args, **kw)
+
+
+def determine_length(file):
+    import mdtraj
+    try:
+        with mdtraj.open(file) as fh:
+            return len(fh)
+    except:
+        raise
 
 
 @receiver(post_save, sender=Trajectory)
@@ -88,7 +170,10 @@ def update_cumulative_simulation_len(sender, created, instance, **kw):
     # once we've (successfully) created a trajectory, increment the sum of frames
     # in the associated collection.
     if created:
+        # determine length of file
+        instance.length = determine_length(instance.data.path)
+        # update cumulative length
         instance.collection.cumulative_length += instance.length
-        # TODO: determine length with mdtraj etc.
-        instance.length = 0
         instance.collection.save()
+
+        # move_traj_data_to_collection_subfolder(instance)

@@ -12,8 +12,6 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
-from django.conf.global_settings import FILE_UPLOAD_HANDLERS
-#from django.conf.global_settings import FILE_UPLOAD_HANDLERS
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -77,11 +75,14 @@ WSGI_APPLICATION = 'trajdb.wsgi.application'
 # file upload handlers
 
 # TODO: create custom handler to hash the file while it is being uploaded
-#FILE_UPLOAD_HANDLERS = ['django.core.files.uploadhandler.TemporaryFileUploadHandler']
-FILE_UPLOAD_HANDLERS = ['apps.trajdb.filehandling.hash_while_upload_handler.HashWhileWriteUploadHandler']
+FILE_UPLOAD_HANDLERS = ['django.core.files.uploadhandler.TemporaryFileUploadHandler']
+#FILE_UPLOAD_HANDLERS = ['apps.trajdb.filehandling.hash_while_upload_handler.HashWhileWriteUploadHandler']
 FILE_UPLOAD_TEMP_DIR = '/tmp/'
-MEDIA_ROOT = 'datastore' # resides next to the application.
-MEDIA_URL = 'http://localhost:8000/download/'
+MEDIA_ROOT = '/tmp/datastore' # resides next to the application.
+MEDIA_URL = '/download/'
+
+
+TRAJ_SUBDIR = 'data'
 
 # Database
 # https://docs.djangoproject.com/en/1.8/ref/settings/#databases

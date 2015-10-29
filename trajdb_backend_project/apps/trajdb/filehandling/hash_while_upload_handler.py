@@ -7,8 +7,6 @@ Created on 21.10.2015
 from django.core.files.uploadhandler import TemporaryFileUploadHandler
 import hashlib
 
-from ..models import Trajectory
-
 
 class HashWhileWriteUploadHandler(TemporaryFileUploadHandler):
 
